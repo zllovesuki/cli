@@ -1,0 +1,17 @@
+float64-slice:
+- 0.1
+- 2.3
+- 4567.89
+int: 1
+int-slice:
+- 1
+- 2
+- 3
+int64-slice:
+- 10000000
+- 999
+- 1312
+string-slice:
+- a
+- b
+- c

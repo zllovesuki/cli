@@ -97,6 +97,7 @@ type IntSliceFlag struct {
 	Value       *IntSlice
 	DefaultText string
 	HasBeenSet  bool
+	Destination *IntSlice
 }
 
 // IsSet returns whether or not the flag has been set through env or file
@@ -159,27 +160,44 @@ func (f *IntSliceFlag) GetEnvVars() []string {
 
 // Apply populates the flag given the flag set and environment
 func (f *IntSliceFlag) Apply(set *flag.FlagSet) error {
+	if f.Destination != nil && f.Value != nil {
+		f.Destination.slice = make([]int, len(f.Value.slice))
+		copy(f.Destination.slice, f.Value.slice)
+	}
+
 	if val, ok := flagFromEnvOrFile(f.EnvVars, f.FilePath); ok {
-		f.Value = &IntSlice{}
+		if f.Value == nil {
+			f.Value = &IntSlice{}
+		}
+
+		destination := f.Value
+		if f.Destination != nil {
+			destination = f.Destination
+		}
 
 		for _, s := range strings.Split(val, ",") {
-			if err := f.Value.Set(strings.TrimSpace(s)); err != nil {
+			if err := destination.Set(strings.TrimSpace(s)); err != nil {
 				return fmt.Errorf("could not parse %q as int slice value for flag %s: %s", val, f.Name, err)
 			}
 		}
 
 		// Set this to false so that we reset the slice if we then set values from
 		// flags that have already been set by the environment.
-		f.Value.hasBeenSet = false
+		destination.hasBeenSet = false
 		f.HasBeenSet = true
 	}
 
 	if f.Value == nil {
 		f.Value = &IntSlice{}
 	}
-	copyValue := f.Value.clone()
+
+	setValue := f.Destination
+	if f.Destination == nil {
+		setValue = f.Value.clone()
+	}
+
 	for _, name := range f.Names() {
-		set.Var(copyValue, name, f.Usage)
+		set.Var(setValue, name, f.Usage)
 	}
 
 	return nil

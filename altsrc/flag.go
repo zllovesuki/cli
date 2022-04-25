@@ -81,6 +81,28 @@ func (f *GenericFlag) ApplyInputSourceValue(cCtx *cli.Context, isc InputSourceCo
 	return nil
 }
 
+// ApplyInputSourceValue applies a Float64Slice value if required
+func (f *Float64SliceFlag) ApplyInputSourceValue(cCtx *cli.Context, isc InputSourceContext) error {
+	if f.set != nil {
+		if !cCtx.IsSet(f.Name) && !isEnvVarSet(f.EnvVars) {
+			value, err := isc.Float64Slice(f.Float64SliceFlag.Name)
+			if err != nil {
+				return err
+			}
+			if value != nil {
+				var sliceValue cli.Float64Slice = *(cli.NewFloat64Slice(value...))
+				for _, name := range f.Names() {
+					underlyingFlag := f.set.Lookup(name)
+					if underlyingFlag != nil {
+						underlyingFlag.Value = &sliceValue
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // ApplyInputSourceValue applies a StringSlice value to the flagSet if required
 func (f *StringSliceFlag) ApplyInputSourceValue(cCtx *cli.Context, isc InputSourceContext) error {
 	if f.set != nil {
@@ -113,6 +135,28 @@ func (f *IntSliceFlag) ApplyInputSourceValue(cCtx *cli.Context, isc InputSourceC
 			}
 			if value != nil {
 				var sliceValue cli.IntSlice = *(cli.NewIntSlice(value...))
+				for _, name := range f.Names() {
+					underlyingFlag := f.set.Lookup(name)
+					if underlyingFlag != nil {
+						underlyingFlag.Value = &sliceValue
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// ApplyInputSourceValue applies a Int64Slice value if required
+func (f *Int64SliceFlag) ApplyInputSourceValue(cCtx *cli.Context, isc InputSourceContext) error {
+	if f.set != nil {
+		if !cCtx.IsSet(f.Name) && !isEnvVarSet(f.EnvVars) {
+			value, err := isc.Int64Slice(f.Int64SliceFlag.Name)
+			if err != nil {
+				return err
+			}
+			if value != nil {
+				var sliceValue cli.Int64Slice = *(cli.NewInt64Slice(value...))
 				for _, name := range f.Names() {
 					underlyingFlag := f.set.Lookup(name)
 					if underlyingFlag != nil {

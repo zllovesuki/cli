@@ -17,9 +17,11 @@ type InputSourceContext interface {
 	Int(name string) (int, error)
 	Duration(name string) (time.Duration, error)
 	Float64(name string) (float64, error)
+	Float64Slice(name string) ([]float64, error)
 	String(name string) (string, error)
 	StringSlice(name string) ([]string, error)
 	IntSlice(name string) ([]int, error)
+	Int64Slice(name string) ([]int64, error)
 	Generic(name string) (cli.Generic, error)
 	Bool(name string) (bool, error)
 }
