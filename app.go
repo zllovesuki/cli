@@ -191,7 +191,7 @@ func (a *App) Setup() {
 		flag.VisitAll(func(f *flag.Flag) {
 			// skip test flags
 			if !strings.HasPrefix(f.Name, ignoreFlagPrefix) {
-				a.Flags = append(a.Flags, &extFlag{f})
+				a.Flags = append(a.Flags, &extFlag{f: f})
 			}
 		})
 	}
@@ -272,10 +272,6 @@ func (a *App) newRootCommand() *Command {
 		SkipFlagParsing:        a.SkipFlagParsing,
 		isRoot:                 true,
 	}
-}
-
-func (a *App) newFlagSet() (*flag.FlagSet, error) {
-	return flagSet(a.Name, a.Flags)
 }
 
 func (a *App) useShortOptionHandling() bool {

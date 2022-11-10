@@ -155,7 +155,7 @@ func main() {
 			},
 			&cli.StringSliceFlag{
 				Name:  "packages",
-				Value: cli.NewStringSlice("cli", "internal/build"),
+				Value: cli.NewStringSlice("cli", "internal/build", "internal/argh"),
 			},
 		},
 	}
