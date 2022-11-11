@@ -2,9 +2,10 @@ package cli
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"strings"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // Context is a type that is passed through to
@@ -13,31 +14,31 @@ import (
 // parsed command-line options.
 type Context struct {
 	context.Context
-	App           *App
-	Command       *Command
+
+	App     *App
+	Command *Command
+
 	shellComplete bool
-	flagSet       *flag.FlagSet
-	parentContext *Context
+	parent        *Context
+	flagSet       *argh.CommandConfig
 }
 
 // NewContext creates a new context. For use in when invoking an App or Command action.
-func NewContext(app *App, set *flag.FlagSet, parentCtx *Context) *Context {
-	c := &Context{App: app, flagSet: set, parentContext: parentCtx}
+func NewContext(app *App, flagSet *argh.CommandConfig, parentCtx *Context) *Context {
+	cCtx := &Context{App: app, flagSet: flagSet, parent: parentCtx}
+
 	if parentCtx != nil {
-		c.Context = parentCtx.Context
-		c.shellComplete = parentCtx.shellComplete
-		if parentCtx.flagSet == nil {
-			parentCtx.flagSet = &flag.FlagSet{}
-		}
+		cCtx.Context = parentCtx.Context
+		cCtx.shellComplete = parentCtx.shellComplete
 	}
 
-	c.Command = &Command{}
+	cCtx.Command = &Command{}
 
-	if c.Context == nil {
-		c.Context = context.Background()
+	if cCtx.Context == nil {
+		cCtx.Context = context.Background()
 	}
 
-	return c
+	return cCtx
 }
 
 // NumFlags returns the number of flags set
@@ -56,26 +57,8 @@ func (cCtx *Context) Set(name, value string) error {
 
 // IsSet determines if the flag was actually set
 func (cCtx *Context) IsSet(name string) bool {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		isSet := false
-		fs.Visit(func(f *flag.Flag) {
-			if f.Name == name {
-				isSet = true
-			}
-		})
-		if isSet {
-			return true
-		}
-
-		f := cCtx.lookupFlag(name)
-		if f == nil {
-			return false
-		}
-
-		return f.IsSet()
-	}
-
-	return false
+	flCfg, ok := cCtx.flagSet.GetFlagConfig(name)
+	return ok && flCfg.Node != nil
 }
 
 // LocalFlagNames returns a slice of flag names used in this context.
@@ -120,7 +103,7 @@ func (cCtx *Context) FlagNames() []string {
 func (cCtx *Context) Lineage() []*Context {
 	var lineage []*Context
 
-	for cur := cCtx; cur != nil; cur = cur.parentContext {
+	for cur := cCtx; cur != nil; cur = cur.parent {
 		lineage = append(lineage, cur)
 	}
 
@@ -129,19 +112,35 @@ func (cCtx *Context) Lineage() []*Context {
 
 // Count returns the num of occurences of this flag
 func (cCtx *Context) Count(name string) int {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		if cf, ok := fs.Lookup(name).Value.(Countable); ok {
-			return cf.Count()
-		}
+	flagSet := cCtx.lookupFlagSet(name)
+	if flagSet == nil {
+		return 0
 	}
-	return 0
+
+	flCfg := flagSet.Lookup(name)
+	if flCfg == nil || flCfg.Node == nil {
+		return 0
+	}
+
+	return len(flCfg.Node.Values)
 }
 
 // Value returns the value of the flag corresponding to `name`
 func (cCtx *Context) Value(name string) interface{} {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return fs.Lookup(name).Value.(flag.Getter).Get()
+	flagSet := cCtx.lookupFlagSet(name)
+	if flagSet == nil {
+		return nil
 	}
+
+	flCfg := flagSet.Lookup(name)
+	if flCfg == nil || flCfg.Node == nil {
+		return nil
+	}
+
+	if vals := flCfg.Values(); len(vals) > 0 {
+		return vals[0]
+	}
+
 	return nil
 }
 
@@ -184,7 +183,7 @@ func (cCtx *Context) lookupFlag(name string) Flag {
 	return nil
 }
 
-func (cCtx *Context) lookupFlagSet(name string) *flag.FlagSet {
+func (cCtx *Context) lookupFlagSet(name string) *argh.CommandConfig {
 	for _, c := range cCtx.Lineage() {
 		if c.flagSet == nil {
 			continue
@@ -231,12 +230,12 @@ func (cCtx *Context) onInvalidFlag(name string) {
 			cCtx.App.InvalidFlagAccessHandler(cCtx, name)
 			break
 		}
-		cCtx = cCtx.parentContext
+		cCtx = cCtx.parent
 	}
 }
 
-func makeFlagNameVisitor(names *[]string) func(*flag.Flag) {
-	return func(f *flag.Flag) {
+func makeFlagNameVisitor(names *[]string) func(*argh.CommandFlag) {
+	return func(f *argh.CommandFlag) {
 		nameParts := strings.Split(f.Name, ",")
 		name := strings.TrimSpace(nameParts[0])
 

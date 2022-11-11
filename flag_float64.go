@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // GetValue returns the flags value as string representation and an empty
@@ -68,14 +70,16 @@ func (cCtx *Context) Float64(name string) float64 {
 	return 0
 }
 
-func lookupFloat64(name string, set *flag.FlagSet) float64 {
-	f := set.Lookup(name)
-	if f != nil {
-		parsed, err := strconv.ParseFloat(f.Value.String(), 64)
+func lookupFloat64(name string, flagSet *argh.CommandConfig) float64 {
+	flCfg := flagSet.Lookup(name)
+	if flCfg != nil {
+		parsed, err := strconv.ParseFloat(flCfg.Value(), 64)
 		if err != nil {
 			return 0
 		}
+
 		return parsed
 	}
+
 	return 0
 }

@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // boolValue needs to implement the boolFlag internal interface in flag
@@ -130,20 +132,22 @@ func (f *BoolFlag) Get(ctx *Context) bool {
 // Bool looks up the value of a local BoolFlag, returns
 // false if not found
 func (cCtx *Context) Bool(name string) bool {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupBool(name, fs)
+	if flagSet := cCtx.lookupFlagSet(name); flagSet != nil {
+		return lookupBool(name, flagSet)
 	}
 	return false
 }
 
-func lookupBool(name string, set *flag.FlagSet) bool {
-	f := set.Lookup(name)
-	if f != nil {
-		parsed, err := strconv.ParseBool(f.Value.String())
-		if err != nil {
-			return false
-		}
-		return parsed
+func lookupBool(name string, flagSet *argh.CommandConfig) bool {
+	flCfg := flagSet.Lookup(name)
+	if flCfg == nil {
+		return false
 	}
-	return false
+
+	parsed, err := strconv.ParseBool(flCfg.Value())
+	if err != nil {
+		return false
+	}
+
+	return parsed
 }

@@ -50,7 +50,7 @@ var helpCommand = &Command{
 		// $ app foo
 		// which will then be handled as case 3
 		if cCtx.Command.Name == helpName || cCtx.Command.Name == helpAlias {
-			cCtx = cCtx.parentContext
+			cCtx = cCtx.parent
 		}
 
 		// Case 4. $ app hello foo
@@ -62,7 +62,7 @@ var helpCommand = &Command{
 		// Case 1 & 2
 		// Special case when running help on main app itself as opposed to individual
 		// commands/subcommands
-		if cCtx.parentContext.App == nil {
+		if cCtx.parent.App == nil {
 			_ = ShowAppHelp(cCtx)
 			return nil
 		}

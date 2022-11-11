@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"time"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // Timestamp wrap to satisfy golang's flag interface.
@@ -171,10 +173,15 @@ func (cCtx *Context) Timestamp(name string) *time.Time {
 }
 
 // Fetches the timestamp value from the local timestampWrap
-func lookupTimestamp(name string, set *flag.FlagSet) *time.Time {
-	f := set.Lookup(name)
-	if f != nil {
-		return (f.Value.(*Timestamp)).Value()
+func lookupTimestamp(name string, cCfg *argh.CommandConfig) *time.Time {
+	flCfg := cCfg.Lookup(name)
+	if flCfg != nil {
+		parsed, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", flCfg.Value())
+		if err != nil {
+			return nil
+		}
+
+		return &parsed
 	}
 	return nil
 }

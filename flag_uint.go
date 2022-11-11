@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // Apply populates the flag given the flag set and environment
@@ -71,10 +73,10 @@ func (cCtx *Context) Uint(name string) uint {
 	return 0
 }
 
-func lookupUint(name string, set *flag.FlagSet) uint {
-	f := set.Lookup(name)
-	if f != nil {
-		parsed, err := strconv.ParseUint(f.Value.String(), 0, 64)
+func lookupUint(name string, cCfg *argh.CommandConfig) uint {
+	flCfg := cCfg.Lookup(name)
+	if flCfg != nil {
+		parsed, err := strconv.ParseUint(flCfg.Value(), 0, 64)
 		if err != nil {
 			return 0
 		}

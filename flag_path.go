@@ -3,6 +3,8 @@ package cli
 import (
 	"flag"
 	"fmt"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 type Path = string
@@ -69,10 +71,10 @@ func (cCtx *Context) Path(name string) string {
 	return ""
 }
 
-func lookupPath(name string, set *flag.FlagSet) string {
-	f := set.Lookup(name)
-	if f != nil {
-		parsed, err := f.Value.String(), error(nil)
+func lookupPath(name string, cCfg *argh.CommandConfig) string {
+	flCfg := cCfg.Lookup(name)
+	if flCfg != nil {
+		parsed, err := flCfg.Value(), error(nil)
 		if err != nil {
 			return ""
 		}

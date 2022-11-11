@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // Int64Slice wraps []int64 to satisfy flag.Value
@@ -174,10 +176,10 @@ func (cCtx *Context) Int64Slice(name string) []int64 {
 	return nil
 }
 
-func lookupInt64Slice(name string, set *flag.FlagSet) []int64 {
-	f := set.Lookup(name)
-	if f != nil {
-		if slice, ok := unwrapFlagValue(f.Value).(*Int64Slice); ok {
+func lookupInt64Slice(name string, cCfg *argh.CommandConfig) []int64 {
+	flCfg := cCfg.Lookup(name)
+	if flCfg != nil {
+		if slice, ok := unwrapFlagValue(flCfg).(*Int64Slice); ok {
 			return slice.Value()
 		}
 	}

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 const suggestDidYouMeanTemplate = "Did you mean %q?"
@@ -270,7 +272,10 @@ func (a *App) newRootCommand() *Command {
 		CustomHelpTemplate:     a.CustomAppHelpTemplate,
 		categories:             a.categories,
 		SkipFlagParsing:        a.SkipFlagParsing,
-		isRoot:                 true,
+
+		isRoot: true,
+
+		args: argh.New(),
 	}
 }
 

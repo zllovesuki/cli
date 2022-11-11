@@ -1,11 +1,12 @@
 package cli
 
 import (
-	"flag"
 	"fmt"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // Command is a subcommand for a cli.App.
@@ -67,8 +68,12 @@ type Command struct {
 	// categories contains the categorized commands and is populated on app startup
 	categories CommandCategories
 
-	// if this is a root "special" command
+	// isRoot is true if this is a root "special" command
 	isRoot bool
+
+	// args contains the parser config and results and will only be
+	// non-nil when this is a root "special" command
+	args argh.Argh
 }
 
 type Commands []*Command
@@ -138,15 +143,22 @@ func (c *Command) setup(ctx *Context) {
 	c.Subcommands = newCmds
 }
 
-func (c *Command) Run(cCtx *Context, arguments ...string) (err error) {
+func (c *Command) Run(cCtx *Context, arguments ...string) error {
+	var parseErr error
 
-	if !c.isRoot {
+	if c.isRoot {
+		parseErr = c.args.Parse(arguments)
+
+		cCtx.flagSet = c.args.Prog()
+
+		if cCtx.shellComplete {
+			if err := c.handleShellComplete(cCtx); err != nil {
+				return err
+			}
+		}
+	} else {
 		c.setup(cCtx)
 	}
-
-	a := args(arguments)
-	set, err := c.parseFlags(&a, cCtx.shellComplete)
-	cCtx.flagSet = set
 
 	if c.isRoot {
 		if checkCompletions(cCtx) {
@@ -156,15 +168,15 @@ func (c *Command) Run(cCtx *Context, arguments ...string) (err error) {
 		return nil
 	}
 
-	if err != nil {
+	if parseErr != nil {
 		if c.OnUsageError != nil {
-			err = c.OnUsageError(cCtx, err, !c.isRoot)
+			err := c.OnUsageError(cCtx, parseErr, !c.isRoot)
 			cCtx.App.handleExitCoder(cCtx, err)
 			return err
 		}
-		_, _ = fmt.Fprintf(cCtx.App.Writer, "%s %s\n\n", "Incorrect Usage:", err.Error())
+		_, _ = fmt.Fprintf(cCtx.App.Writer, "%s %s\n\n", "Incorrect Usage:", parseErr.Error())
 		if cCtx.App.Suggest {
-			if suggestion, err := c.suggestFlagFromError(err, ""); err == nil {
+			if suggestion, err := c.suggestFlagFromError(parseErr, ""); err == nil {
 				fmt.Fprintf(cCtx.App.Writer, "%s", suggestion)
 			}
 		}
@@ -172,10 +184,10 @@ func (c *Command) Run(cCtx *Context, arguments ...string) (err error) {
 			if c.isRoot {
 				_ = ShowAppHelp(cCtx)
 			} else {
-				_ = ShowCommandHelp(cCtx.parentContext, c.Name)
+				_ = ShowCommandHelp(cCtx.parent, c.Name)
 			}
 		}
-		return err
+		return parseErr
 	}
 
 	if checkHelp(cCtx) {
@@ -191,32 +203,30 @@ func (c *Command) Run(cCtx *Context, arguments ...string) (err error) {
 		defer func() {
 			afterErr := c.After(cCtx)
 			if afterErr != nil {
-				cCtx.App.handleExitCoder(cCtx, err)
-				if err != nil {
-					err = newMultiError(err, afterErr)
+				cCtx.App.handleExitCoder(cCtx, parseErr)
+				if parseErr != nil {
+					parseErr = newMultiError(parseErr, afterErr)
 				} else {
-					err = afterErr
+					parseErr = afterErr
 				}
 			}
 		}()
 	}
 
-	cerr := cCtx.checkRequiredFlags(c.Flags)
-	if cerr != nil {
+	if err := cCtx.checkRequiredFlags(c.Flags); err != nil {
 		_ = ShowSubcommandHelp(cCtx)
-		return cerr
+		return err
 	}
 
 	if c.Before != nil && !cCtx.shellComplete {
 		beforeErr := c.Before(cCtx)
 		if beforeErr != nil {
 			cCtx.App.handleExitCoder(cCtx, beforeErr)
-			err = beforeErr
-			return err
+			return beforeErr
 		}
 	}
 
-	if err = runFlagActions(cCtx, c.Flags); err != nil {
+	if err := runFlagActions(cCtx, c.Flags); err != nil {
 		return err
 	}
 
@@ -268,14 +278,15 @@ func (c *Command) Run(cCtx *Context, arguments ...string) (err error) {
 		c.Action = helpCommand.Action
 	}
 
-	err = c.Action(cCtx)
+	actionErr := c.Action(cCtx)
 
-	cCtx.App.handleExitCoder(cCtx, err)
-	return err
+	cCtx.App.handleExitCoder(cCtx, actionErr)
+	return actionErr
 }
 
-func (c *Command) newFlagSet() (*flag.FlagSet, error) {
-	return flagSet(c.Name, c.Flags)
+func (c *Command) handleShellComplete(cCtx *Context) error {
+	// TODO: functionality in parseFlags -> parseIter
+	return nil
 }
 
 func (c *Command) useShortOptionHandling() bool {
@@ -307,6 +318,8 @@ func (c *Command) suggestFlagFromError(err error, command string) (string, error
 	return fmt.Sprintf(SuggestDidYouMeanTemplate, suggestion) + "\n\n", nil
 }
 
+/**
+ * NOTE: no longer used, but keeping nearby for reference: {{
 func (c *Command) parseFlags(args Args, shellComplete bool) (*flag.FlagSet, error) {
 	set, err := c.newFlagSet()
 	if err != nil {
@@ -329,6 +342,8 @@ func (c *Command) parseFlags(args Args, shellComplete bool) (*flag.FlagSet, erro
 
 	return set, nil
 }
+}}
+*/
 
 // Names returns the names including short names and aliases.
 func (c *Command) Names() []string {

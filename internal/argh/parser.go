@@ -184,12 +184,7 @@ func (p *parser) parseCommand(cCfg *CommandConfig) Node {
 		node.Values = values
 	}
 
-	if cCfg.On != nil {
-		tracef("parseCommand(...) calling command config handler for node=%+#v", node)
-		cCfg.On(*node)
-	} else {
-		tracef("parseCommand(...) no command config handler for node=%+#v", node)
-	}
+	cCfg.Node = node
 
 	tracef("parseCommand(...) returning node=%+#v", node)
 	return node
@@ -244,7 +239,7 @@ func (p *parser) parseLongFlag(flags *Flags) Node {
 
 func (p *parser) parseCompoundShortFlag(flags *Flags) Node {
 	unparsedFlags := []*CommandFlag{}
-	unparsedFlagConfigs := []FlagConfig{}
+	unparsedFlagConfigs := []*FlagConfig{}
 
 	withoutFlagPrefix := p.lit[1:]
 
@@ -295,7 +290,7 @@ func (p *parser) parseCompoundShortFlag(flags *Flags) Node {
 	return &CompoundShortFlag{Nodes: flagNodes}
 }
 
-func (p *parser) parseConfiguredFlag(node *CommandFlag, flCfg FlagConfig, nValueOverride *NValue) Node {
+func (p *parser) parseConfiguredFlag(node *CommandFlag, flCfg *FlagConfig, nValueOverride *NValue) Node {
 	values := map[string]string{}
 	nodes := []Node{}
 
@@ -308,12 +303,7 @@ func (p *parser) parseConfiguredFlag(node *CommandFlag, flCfg FlagConfig, nValue
 			node.Values = values
 		}
 
-		if flCfg.On != nil {
-			tracef("parseConfiguredFlag(...) calling flag config handler for node=%+#[1]v", node)
-			flCfg.On(*node)
-		} else {
-			tracef("parseConfiguredFlag(...) no flag config handler for node=%+#[1]v", node)
-		}
+		flCfg.Node = node
 
 		return node
 	}

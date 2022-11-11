@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"time"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // GetValue returns the flags value as string representation and an empty
@@ -71,10 +73,10 @@ func (cCtx *Context) Duration(name string) time.Duration {
 	return 0
 }
 
-func lookupDuration(name string, set *flag.FlagSet) time.Duration {
-	f := set.Lookup(name)
-	if f != nil {
-		parsed, err := time.ParseDuration(f.Value.String())
+func lookupDuration(name string, flagSet *argh.CommandConfig) time.Duration {
+	flCfg := flagSet.Lookup(name)
+	if flCfg != nil {
+		parsed, err := time.ParseDuration(flCfg.Value())
 		if err != nil {
 			return 0
 		}
