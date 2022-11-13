@@ -67,20 +67,17 @@ func (f *DurationFlag) RunAction(c *Context) error {
 // Duration looks up the value of a local DurationFlag, returns
 // 0 if not found
 func (cCtx *Context) Duration(name string) time.Duration {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupDuration(name, fs)
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		return lookupDuration(name, flCfg)
 	}
 	return 0
 }
 
-func lookupDuration(name string, flagSet *argh.CommandConfig) time.Duration {
-	flCfg := flagSet.Lookup(name)
-	if flCfg != nil {
-		parsed, err := time.ParseDuration(flCfg.Value())
-		if err != nil {
-			return 0
-		}
-		return parsed
+func lookupDuration(name string, flCfg *argh.FlagConfig) time.Duration {
+	parsed, err := time.ParseDuration(flCfg.Value())
+	if err != nil {
+		return 0
 	}
-	return 0
+
+	return parsed
 }

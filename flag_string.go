@@ -3,8 +3,6 @@ package cli
 import (
 	"flag"
 	"fmt"
-
-	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // GetValue returns the flags value as string representation and an empty
@@ -62,15 +60,7 @@ func (f *StringFlag) RunAction(c *Context) error {
 // String looks up the value of a local StringFlag, returns
 // "" if not found
 func (cCtx *Context) String(name string) string {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupString(name, fs)
-	}
-	return ""
-}
-
-func lookupString(name string, cCfg *argh.CommandConfig) string {
-	flCfg := cCfg.Lookup(name)
-	if flCfg != nil {
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
 		return flCfg.Value()
 	}
 	return ""

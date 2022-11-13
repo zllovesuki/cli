@@ -132,18 +132,13 @@ func (f *BoolFlag) Get(ctx *Context) bool {
 // Bool looks up the value of a local BoolFlag, returns
 // false if not found
 func (cCtx *Context) Bool(name string) bool {
-	if flagSet := cCtx.lookupFlagSet(name); flagSet != nil {
-		return lookupBool(name, flagSet)
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		return lookupBool(name, flCfg)
 	}
 	return false
 }
 
-func lookupBool(name string, flagSet *argh.CommandConfig) bool {
-	flCfg := flagSet.Lookup(name)
-	if flCfg == nil {
-		return false
-	}
-
+func lookupBool(name string, flCfg *argh.FlagConfig) bool {
 	parsed, err := strconv.ParseBool(flCfg.Value())
 	if err != nil {
 		return false

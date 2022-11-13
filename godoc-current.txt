@@ -578,7 +578,7 @@ func (c *Command) HasName(name string) bool
 func (c *Command) Names() []string
     Names returns the names including short names and aliases.
 
-func (c *Command) Run(cCtx *Context, arguments ...string) (err error)
+func (c *Command) Run(cCtx *Context, arguments ...string) error
 
 func (c *Command) VisibleCategories() []CommandCategory
     VisibleCategories returns a slice of categories and commands that are
@@ -625,6 +625,7 @@ func (c CommandsByName) Swap(i, j int)
 
 type Context struct {
 	context.Context
+
 	App     *App
 	Command *Command
 
@@ -634,7 +635,7 @@ type Context struct {
     application. Context can be used to retrieve context-specific args and
     parsed command-line options.
 
-func NewContext(app *App, set *flag.FlagSet, parentCtx *Context) *Context
+func NewContext(app *App, flagSet *argh.CommandConfig, parentCtx *Context) *Context
     NewContext creates a new context. For use in when invoking an App or Command
     action.
 

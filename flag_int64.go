@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
-
-	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // GetValue returns the flags value as string representation and an empty
@@ -67,20 +65,14 @@ func (f *Int64Flag) RunAction(c *Context) error {
 // Int64 looks up the value of a local Int64Flag, returns
 // 0 if not found
 func (cCtx *Context) Int64(name string) int64 {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupInt64(name, fs)
-	}
-	return 0
-}
-
-func lookupInt64(name string, cCfg *argh.CommandConfig) int64 {
-	flCfg := cCfg.Lookup(name)
-	if flCfg != nil {
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
 		parsed, err := strconv.ParseInt(flCfg.Value(), 0, 64)
 		if err != nil {
 			return 0
 		}
+
 		return parsed
 	}
+
 	return 0
 }

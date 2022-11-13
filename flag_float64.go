@@ -64,22 +64,17 @@ func (f *Float64Flag) RunAction(c *Context) error {
 // Float64 looks up the value of a local Float64Flag, returns
 // 0 if not found
 func (cCtx *Context) Float64(name string) float64 {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupFloat64(name, fs)
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		return lookupFloat64(name, flCfg)
 	}
 	return 0
 }
 
-func lookupFloat64(name string, flagSet *argh.CommandConfig) float64 {
-	flCfg := flagSet.Lookup(name)
-	if flCfg != nil {
-		parsed, err := strconv.ParseFloat(flCfg.Value(), 64)
-		if err != nil {
-			return 0
-		}
-
-		return parsed
+func lookupFloat64(name string, flCfg *argh.FlagConfig) float64 {
+	parsed, err := strconv.ParseFloat(flCfg.Value(), 64)
+	if err != nil {
+		return 0
 	}
 
-	return 0
+	return parsed
 }

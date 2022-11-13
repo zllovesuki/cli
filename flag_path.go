@@ -3,8 +3,6 @@ package cli
 import (
 	"flag"
 	"fmt"
-
-	"github.com/urfave/cli/v3/internal/argh"
 )
 
 type Path = string
@@ -13,6 +11,10 @@ type Path = string
 // string if the flag takes no value at all.
 func (f *PathFlag) GetValue() string {
 	return f.Value
+}
+
+func (f *PathFlag) getValueAsAny() (any, error) {
+	return f.Value, nil
 }
 
 // GetDefaultText returns the default text for this flag
@@ -64,21 +66,15 @@ func (f *PathFlag) RunAction(c *Context) error {
 // Path looks up the value of a local PathFlag, returns
 // "" if not found
 func (cCtx *Context) Path(name string) string {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupPath(name, fs)
-	}
-
-	return ""
-}
-
-func lookupPath(name string, cCfg *argh.CommandConfig) string {
-	flCfg := cCfg.Lookup(name)
-	if flCfg != nil {
-		parsed, err := flCfg.Value(), error(nil)
-		if err != nil {
-			return ""
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		if v, err := cCtx.lookupValue(
+			flCfg,
+			name,
+			func(s string) (any, error) { return s, nil },
+		); err == nil {
+			return v.(string)
 		}
-		return parsed
 	}
+
 	return ""
 }

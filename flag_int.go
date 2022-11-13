@@ -68,20 +68,17 @@ func (f *IntFlag) RunAction(c *Context) error {
 // Int looks up the value of a local IntFlag, returns
 // 0 if not found
 func (cCtx *Context) Int(name string) int {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupInt(name, fs)
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		return lookupInt(name, flCfg)
 	}
 	return 0
 }
 
-func lookupInt(name string, cCfg *argh.CommandConfig) int {
-	flCfg := cCfg.Lookup(name)
-	if flCfg != nil {
-		parsed, err := strconv.ParseInt(flCfg.Value(), 0, 64)
-		if err != nil {
-			return 0
-		}
-		return int(parsed)
+func lookupInt(name string, flCfg *argh.FlagConfig) int {
+	parsed, err := strconv.ParseInt(flCfg.Value(), 0, 64)
+	if err != nil {
+		return 0
 	}
-	return 0
+
+	return int(parsed)
 }

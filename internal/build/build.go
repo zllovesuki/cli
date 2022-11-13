@@ -177,6 +177,7 @@ func sh(exe string, args ...string) (string, error) {
 
 func topRunAction(arg string, args ...string) cli.ActionFunc {
 	return func(cCtx *cli.Context) error {
+		fmt.Printf("# top=%q\n", cCtx.Path("top"))
 		os.Chdir(cCtx.Path("top"))
 
 		return runCmd(arg, args...)
@@ -231,14 +232,13 @@ func downloadFile(src, dest string, dirPerm, perm os.FileMode) error {
 	return os.Chmod(dest, perm)
 }
 
-func VetActionFunc(cCtx *cli.Context) error {
-	return runCmd("go", "vet", cCtx.Path("top")+"/...")
-}
-
 func TestActionFunc(c *cli.Context) error {
 	tags := c.String("tags")
+	packages := c.StringSlice("packages")
 
-	for _, pkg := range c.StringSlice("packages") {
+	fmt.Fprintf(os.Stderr, "# ---> packages=%+[1]v\n", packages)
+
+	for _, pkg := range packages {
 		packageName := "github.com/urfave/cli/v3"
 
 		if pkg != "cli" {

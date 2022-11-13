@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // StringSlice wraps a []string to satisfy flag.Value
@@ -93,6 +91,20 @@ func (f *StringSliceFlag) GetValue() string {
 	return strings.Join(defaultVals, ", ")
 }
 
+func (f *StringSliceFlag) getValueAsAnyFlag() (any, error) {
+	sl := []string{}
+
+	if f.Value != nil && len(f.Value.Value()) > 0 {
+		for _, s := range f.Value.Value() {
+			if len(s) > 0 {
+				sl = append(sl, s)
+			}
+		}
+	}
+
+	return sl, nil
+}
+
 // GetDefaultText returns the default text for this flag
 func (f *StringSliceFlag) GetDefaultText() string {
 	if f.DefaultText != "" {
@@ -162,18 +174,23 @@ func (f *StringSliceFlag) RunAction(c *Context) error {
 // StringSlice looks up the value of a local StringSliceFlag, returns
 // nil if not found
 func (cCtx *Context) StringSlice(name string) []string {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupStringSlice(name, fs)
-	}
-	return nil
-}
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		if v, err := cCtx.lookupValue(
+			flCfg,
+			name,
+			func(s string) (any, error) {
+				sl := []string{}
 
-func lookupStringSlice(name string, cCfg *argh.CommandConfig) []string {
-	flCfg := cCfg.Lookup(name)
-	if flCfg != nil {
-		if slice, ok := unwrapFlagValue(flCfg).(*StringSlice); ok {
-			return slice.Value()
+				for _, part := range strings.Split(s, ",") {
+					sl = append(sl, strings.TrimSpace(part))
+				}
+
+				return sl, nil
+			},
+		); err == nil {
+			return v.([]string)
 		}
 	}
+
 	return nil
 }

@@ -2,10 +2,15 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/urfave/cli/v3/internal/argh"
+)
+
+var (
+	errCoerce = errors.New("coerce error")
 )
 
 // Context is a type that is passed through to
@@ -22,6 +27,8 @@ type Context struct {
 	parent        *Context
 	flagSet       *argh.CommandConfig
 }
+
+type coerceFunc func(string) (any, error)
 
 // NewContext creates a new context. For use in when invoking an App or Command action.
 func NewContext(app *App, flagSet *argh.CommandConfig, parentCtx *Context) *Context {
@@ -48,8 +55,8 @@ func (cCtx *Context) NumFlags() int {
 
 // Set sets a context flag to a value.
 func (cCtx *Context) Set(name, value string) error {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return fs.Set(name, value)
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		return flCfg.Set(value)
 	}
 
 	return fmt.Errorf("no such flag -%s", name)
@@ -63,6 +70,10 @@ func (cCtx *Context) IsSet(name string) bool {
 
 // LocalFlagNames returns a slice of flag names used in this context.
 func (cCtx *Context) LocalFlagNames() []string {
+	if cCtx.flagSet == nil {
+		return []string{}
+	}
+
 	var names []string
 	cCtx.flagSet.Visit(makeFlagNameVisitor(&names))
 	// Check the flags which have been set via env or file
@@ -112,12 +123,7 @@ func (cCtx *Context) Lineage() []*Context {
 
 // Count returns the num of occurences of this flag
 func (cCtx *Context) Count(name string) int {
-	flagSet := cCtx.lookupFlagSet(name)
-	if flagSet == nil {
-		return 0
-	}
-
-	flCfg := flagSet.Lookup(name)
+	_, flCfg := cCtx.lookupFlagSet(name)
 	if flCfg == nil || flCfg.Node == nil {
 		return 0
 	}
@@ -127,12 +133,7 @@ func (cCtx *Context) Count(name string) int {
 
 // Value returns the value of the flag corresponding to `name`
 func (cCtx *Context) Value(name string) interface{} {
-	flagSet := cCtx.lookupFlagSet(name)
-	if flagSet == nil {
-		return nil
-	}
-
-	flCfg := flagSet.Lookup(name)
+	_, flCfg := cCtx.lookupFlagSet(name)
 	if flCfg == nil || flCfg.Node == nil {
 		return nil
 	}
@@ -183,17 +184,18 @@ func (cCtx *Context) lookupFlag(name string) Flag {
 	return nil
 }
 
-func (cCtx *Context) lookupFlagSet(name string) *argh.CommandConfig {
+func (cCtx *Context) lookupFlagSet(name string) (*argh.CommandConfig, *argh.FlagConfig) {
 	for _, c := range cCtx.Lineage() {
 		if c.flagSet == nil {
 			continue
 		}
-		if f := c.flagSet.Lookup(name); f != nil {
-			return c.flagSet
+
+		if flCfg := c.flagSet.Lookup(name); flCfg != nil {
+			return c.flagSet, flCfg
 		}
 	}
 	cCtx.onInvalidFlag(name)
-	return nil
+	return nil, nil
 }
 
 func (cCtx *Context) checkRequiredFlags(flags []Flag) requiredFlagsErr {
@@ -232,6 +234,32 @@ func (cCtx *Context) onInvalidFlag(name string) {
 		}
 		cCtx = cCtx.parent
 	}
+}
+
+func (cCtx *Context) lookupValue(flCfg *argh.FlagConfig, name string, f coerceFunc) (any, error) {
+	if v, ok := flCfg.LookupValue(); ok {
+		return f(v)
+	}
+
+	missErr := fmt.Errorf("no value with key %q", name)
+
+	for c := cCtx; c.parent != nil; c = c.parent {
+		if c.Command == nil {
+			continue
+		}
+
+		for _, fl := range c.Command.Flags {
+			if gvfl, ok := fl.(getValueAsAnyFlag); ok {
+				for _, flName := range fl.Names() {
+					if flName == name {
+						return gvfl.getValueAsAny()
+					}
+				}
+			}
+		}
+	}
+
+	return nil, missErr
 }
 
 func makeFlagNameVisitor(names *[]string) func(*argh.CommandFlag) {

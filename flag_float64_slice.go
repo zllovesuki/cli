@@ -171,18 +171,16 @@ func (f *Float64SliceFlag) RunAction(c *Context) error {
 // Float64Slice looks up the value of a local Float64SliceFlag, returns
 // nil if not found
 func (cCtx *Context) Float64Slice(name string) []float64 {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupFloat64Slice(name, fs)
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
+		return lookupFloat64Slice(name, flCfg)
 	}
 	return nil
 }
 
-func lookupFloat64Slice(name string, flagSet *argh.CommandConfig) []float64 {
-	flCfg := flagSet.Lookup(name)
-	if flCfg != nil {
-		if slice, ok := unwrapFlagValue(flCfg).(*Float64Slice); ok {
-			return slice.Value()
-		}
+func lookupFloat64Slice(name string, flCfg *argh.FlagConfig) []float64 {
+	if slice, ok := unwrapFlagValue(flCfg).(*Float64Slice); ok {
+		return slice.Value()
 	}
+
 	return nil
 }

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // IntSlice wraps []int to satisfy flag.Value
@@ -181,18 +179,12 @@ func (f *IntSliceFlag) RunAction(c *Context) error {
 // IntSlice looks up the value of a local IntSliceFlag, returns
 // nil if not found
 func (cCtx *Context) IntSlice(name string) []int {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupIntSlice(name, fs)
-	}
-	return nil
-}
-
-func lookupIntSlice(name string, cCfg *argh.CommandConfig) []int {
-	flCfg := cCfg.Lookup(name)
-	if flCfg != nil {
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
 		if slice, ok := unwrapFlagValue(flCfg).(*IntSlice); ok {
 			return slice.Value()
 		}
+
+		return nil
 	}
 	return nil
 }

@@ -2,10 +2,12 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/urfave/cli/v3/internal/argh"
 )
 
@@ -148,9 +150,27 @@ func (c *Command) Run(cCtx *Context, arguments ...string) error {
 	var parseErr error
 
 	if c.isRoot {
+		prog := c.args.Prog()
+		if prog == nil {
+			panic("nil prog")
+		}
+
+		mapFlags(prog, c.Flags)
+
+		mapCommands(cCtx, prog, c.Subcommands)
+
+		if os.Getenv("URFAVE_CLI_SPEW") == "on" {
+			spew.Fdump(cCtx.App.ErrWriter, prog)
+		}
+
 		parseErr = c.args.Parse(arguments)
 
-		cCtx.flagSet = c.args.Prog()
+		if os.Getenv("URFAVE_CLI_SPEW") == "on" {
+			spew.Fdump(cCtx.App.ErrWriter, prog)
+			spew.Fdump(cCtx.App.ErrWriter, c.args.AST())
+		}
+
+		cCtx.flagSet = prog
 
 		if cCtx.shellComplete {
 			if err := c.handleShellComplete(cCtx); err != nil {
@@ -231,36 +251,34 @@ func (c *Command) Run(cCtx *Context, arguments ...string) error {
 		return err
 	}
 
-	var cmd *Command
-	args := cCtx.Args()
-	if args.Present() {
-		name := args.First()
-		cmd = c.Command(name)
-		if cmd == nil {
-			hasDefault := cCtx.App.DefaultCommand != ""
-			isFlagName := checkStringSliceIncludes(name, cCtx.FlagNames())
+	name, cCfg := cCtx.flagSet.GetParsedCommand()
 
-			var (
-				isDefaultSubcommand   = false
-				defaultHasSubcommands = false
-			)
+	cmd := c.Command(name)
+	if cmd == nil {
+		hasDefault := cCtx.App.DefaultCommand != ""
+		isFlagName := checkStringSliceIncludes(name, cCtx.FlagNames())
 
-			if hasDefault {
-				dc := cCtx.App.Command(cCtx.App.DefaultCommand)
-				defaultHasSubcommands = len(dc.Subcommands) > 0
-				for _, dcSub := range dc.Subcommands {
-					if checkStringSliceIncludes(name, dcSub.Names()) {
-						isDefaultSubcommand = true
-						break
-					}
+		var (
+			isDefaultSubcommand   = false
+			defaultHasSubcommands = false
+		)
+
+		if hasDefault {
+			dc := cCtx.App.Command(cCtx.App.DefaultCommand)
+			defaultHasSubcommands = len(dc.Subcommands) > 0
+			for _, dcSub := range dc.Subcommands {
+				if checkStringSliceIncludes(name, dcSub.Names()) {
+					isDefaultSubcommand = true
+					break
 				}
 			}
+		}
 
-			if isFlagName || (hasDefault && (defaultHasSubcommands && isDefaultSubcommand)) {
-				argsWithDefault := cCtx.App.argsWithDefaultCommand(args)
-				if !reflect.DeepEqual(args, argsWithDefault) {
-					cmd = cCtx.App.rootCommand.Command(argsWithDefault.First())
-				}
+		if isFlagName || (hasDefault && (defaultHasSubcommands && isDefaultSubcommand)) {
+			argv := cCtx.Args()
+			argsWithDefault := cCtx.App.argsWithDefaultCommand(argv)
+			if !reflect.DeepEqual(argv, argsWithDefault) {
+				cmd = cCtx.App.rootCommand.Command(argsWithDefault.First())
 			}
 		}
 	} else if c.isRoot && cCtx.App.DefaultCommand != "" {
@@ -270,7 +288,7 @@ func (c *Command) Run(cCtx *Context, arguments ...string) error {
 	}
 
 	if cmd != nil {
-		newcCtx := NewContext(cCtx.App, nil, cCtx)
+		newcCtx := NewContext(cCtx.App, cCfg, cCtx)
 		newcCtx.Command = cmd
 		return cmd.Run(newcCtx, cCtx.Args().Slice()...)
 	}

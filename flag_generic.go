@@ -3,8 +3,6 @@ package cli
 import (
 	"flag"
 	"fmt"
-
-	"github.com/urfave/cli/v3/internal/argh"
 )
 
 // Generic is a generic parseable type identified by a specific flag
@@ -92,15 +90,7 @@ func (f *GenericFlag) RunAction(c *Context) error {
 // Generic looks up the value of a local GenericFlag, returns
 // nil if not found
 func (cCtx *Context) Generic(name string) interface{} {
-	if fs := cCtx.lookupFlagSet(name); fs != nil {
-		return lookupGeneric(name, fs)
-	}
-	return nil
-}
-
-func lookupGeneric(name string, cCfg *argh.CommandConfig) interface{} {
-	flCfg := cCfg.Lookup(name)
-	if flCfg != nil {
+	if _, flCfg := cCtx.lookupFlagSet(name); flCfg != nil {
 		return flCfg.Value()
 	}
 	return nil

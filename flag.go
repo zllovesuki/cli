@@ -117,6 +117,10 @@ type RequiredFlag interface {
 	IsRequired() bool
 }
 
+type getValueAsAnyFlag interface {
+	getValueAsAny() (any, error)
+}
+
 // DocGenerationFlag is an interface that allows documentation generation for the flag
 type DocGenerationFlag interface {
 	Flag

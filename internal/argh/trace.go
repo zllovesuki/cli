@@ -9,25 +9,38 @@ import (
 )
 
 var (
-	tracingEnabled = os.Getenv("ARGH_TRACING") == "enabled"
-	traceLogger    *log.Logger
+	tracingOn   = os.Getenv("ARGH_TRACING") == "on"
+	traceLogger *log.Logger
+
+	cwd *string
 )
 
 func init() {
-	if !tracingEnabled {
+	if !tracingOn {
 		return
 	}
 
 	traceLogger = log.New(os.Stderr, "ARGH TRACING: ", 0)
 }
 
-func tracef(format string, v ...any) {
-	if !tracingEnabled {
+func tracef(skip int, format string, v ...any) {
+	if !tracingOn {
 		return
 	}
 
-	if _, file, line, ok := runtime.Caller(1); ok {
-		format = fmt.Sprintf("%v:%v ", filepath.Base(file), line) + format
+	if cwd == nil {
+		if v, err := os.Getwd(); err == nil {
+			cwd = &v
+		} else {
+			v := ""
+			cwd = &v
+		}
+	}
+
+	if _, file, line, ok := runtime.Caller(skip); ok {
+		if p, err := filepath.Rel(*cwd, file); err == nil {
+			format = fmt.Sprintf("%v:%v ", p, line) + format
+		}
 	}
 
 	traceLogger.Printf(format, v...)
