@@ -2,8 +2,10 @@ package cli
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFishCompletion(t *testing.T) {
@@ -134,11 +136,9 @@ Should be a part of the same code block
 	return app
 }
 
-func expectFileContent(t *testing.T, file, got string) {
-	data, err := ioutil.ReadFile(file)
-	// Ignore windows line endings
-	// TODO: Replace with bytes.ReplaceAll when support for Go 1.11 is dropped
-	data = bytes.Replace(data, []byte("\r\n"), []byte("\n"), -1)
-	expect(t, err, nil)
-	expect(t, got, string(data))
+func expectFileContent(t *testing.T, filename, got string) {
+	expectedBytes, err := os.ReadFile(filename)
+	require.Nil(t, err)
+	expectedBytes = bytes.ReplaceAll(expectedBytes, []byte("\r\n"), []byte("\n"))
+	require.Equal(t, string(expectedBytes), got)
 }
