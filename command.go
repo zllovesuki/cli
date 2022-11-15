@@ -155,9 +155,13 @@ func (c *Command) Run(cCtx *Context, arguments ...string) error {
 			panic("nil prog")
 		}
 
-		mapFlags(prog, c.Flags)
+		if err := mapFlags(prog, c.Flags); err != nil {
+			return err
+		}
 
-		mapCommands(cCtx, prog, c.Subcommands)
+		if err := mapCommands(cCtx, prog, c.Subcommands); err != nil {
+			return err
+		}
 
 		if os.Getenv("URFAVE_CLI_SPEW") == "on" {
 			spew.Fdump(cCtx.App.ErrWriter, prog)
@@ -434,4 +438,46 @@ func hasCommand(commands []*Command, command *Command) bool {
 	}
 
 	return false
+}
+
+func mapFlags(cCfg *argh.CommandConfig, flags []Flag) error {
+	for _, fl := range flags {
+		cfl, ok := fl.(ConfigurableFlag)
+		if !ok {
+			continue
+		}
+
+		if err := cfl.Configure(cCfg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func mapCommands(cCtx *Context, cCfg *argh.CommandConfig, cmds []*Command) error {
+	for _, loopCmd := range cmds {
+		cmd := loopCmd
+
+		if cmd.Name != helpName {
+			cmd.setup(cCtx)
+		}
+
+		// TODO: vary nValue if/when Command accepts positional args?
+		child := cCfg.Child()
+
+		if err := mapFlags(child, cmd.Flags); err != nil {
+			return err
+		}
+
+		if err := mapCommands(cCtx, child, cmd.Subcommands); err != nil {
+			return err
+		}
+
+		for _, name := range cmd.Names() {
+			cCfg.Commands.Set(name, child)
+		}
+	}
+
+	return nil
 }

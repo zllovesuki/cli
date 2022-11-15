@@ -3,8 +3,6 @@ package cli
 import (
 	"flag"
 	"strings"
-
-	"github.com/urfave/cli/v3/internal/argh"
 )
 
 type iterativeParser interface {
@@ -101,46 +99,4 @@ func splitShortOptions(set *flag.FlagSet, arg string) []string {
 
 func isSplittable(flagArg string) bool {
 	return strings.HasPrefix(flagArg, "-") && !strings.HasPrefix(flagArg, "--") && len(flagArg) > 2
-}
-
-func mapFlags(cCfg *argh.CommandConfig, flags []Flag) {
-	for _, fl := range flags {
-		nValue := argh.ZeroValue
-
-		if df, ok := fl.(DocGenerationFlag); ok {
-			if df.TakesValue() {
-				nValue = argh.NValue(1)
-			}
-		}
-
-		flCfg := &argh.FlagConfig{
-			NValue:     nValue,
-			ValueNames: []string{fl.Names()[0]},
-		}
-
-		for _, flAlias := range fl.Names() {
-			cCfg.SetFlagConfig(flAlias, flCfg)
-		}
-	}
-}
-
-func mapCommands(cCtx *Context, cCfg *argh.CommandConfig, cmds []*Command) {
-	for _, loopCmd := range cmds {
-		cmd := loopCmd
-
-		if cmd.Name != helpName {
-			cmd.setup(cCtx)
-		}
-
-		// TODO: vary nValue if/when Command accepts positional args?
-		child := cCfg.Child()
-
-		mapFlags(child, cmd.Flags)
-
-		mapCommands(cCtx, child, cmd.Subcommands)
-
-		for _, name := range cmd.Names() {
-			cCfg.Commands.Set(name, child)
-		}
-	}
 }

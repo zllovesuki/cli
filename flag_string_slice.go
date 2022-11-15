@@ -91,7 +91,7 @@ func (f *StringSliceFlag) GetValue() string {
 	return strings.Join(defaultVals, ", ")
 }
 
-func (f *StringSliceFlag) getValueAsAnyFlag() (any, error) {
+func (f *StringSliceFlag) GetValueAsAnyFlag() (any, error) {
 	sl := []string{}
 
 	if f.Value != nil && len(f.Value.Value()) > 0 {

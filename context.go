@@ -64,8 +64,12 @@ func (cCtx *Context) Set(name, value string) error {
 
 // IsSet determines if the flag was actually set
 func (cCtx *Context) IsSet(name string) bool {
-	flCfg, ok := cCtx.flagSet.GetFlagConfig(name)
-	return ok && flCfg.Node != nil
+	return false
+
+	/*
+		flCfg, ok := cCtx.flagSet.GetFlagConfig(name)
+		return ok && flCfg.Node != nil
+	*/
 }
 
 // LocalFlagNames returns a slice of flag names used in this context.
@@ -123,26 +127,34 @@ func (cCtx *Context) Lineage() []*Context {
 
 // Count returns the num of occurences of this flag
 func (cCtx *Context) Count(name string) int {
-	_, flCfg := cCtx.lookupFlagSet(name)
-	if flCfg == nil || flCfg.Node == nil {
-		return 0
-	}
+	return 0
 
-	return len(flCfg.Node.Values)
+	/*
+		_, flCfg := cCtx.lookupFlagSet(name)
+		if flCfg == nil || flCfg.Node == nil {
+			return 0
+		}
+
+		return len(flCfg.Node.Values)
+	*/
 }
 
 // Value returns the value of the flag corresponding to `name`
 func (cCtx *Context) Value(name string) interface{} {
-	_, flCfg := cCtx.lookupFlagSet(name)
-	if flCfg == nil || flCfg.Node == nil {
-		return nil
-	}
-
-	if vals := flCfg.Values(); len(vals) > 0 {
-		return vals[0]
-	}
-
 	return nil
+
+	/*
+		_, flCfg := cCtx.lookupFlagSet(name)
+		if flCfg == nil || flCfg.Node == nil {
+			return nil
+		}
+
+		if vals := flCfg.Values(); len(vals) > 0 {
+			return vals[0]
+		}
+
+		return nil
+	*/
 }
 
 // Args returns the command line arguments associated with the context.
@@ -249,10 +261,10 @@ func (cCtx *Context) lookupValue(flCfg *argh.FlagConfig, name string, f coerceFu
 		}
 
 		for _, fl := range c.Command.Flags {
-			if gvfl, ok := fl.(getValueAsAnyFlag); ok {
+			if gvfl, ok := fl.(GetValueAsAnyFlag); ok {
 				for _, flName := range fl.Names() {
 					if flName == name {
-						return gvfl.getValueAsAny()
+						return gvfl.GetValueAsAny()
 					}
 				}
 			}

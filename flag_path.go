@@ -13,7 +13,7 @@ func (f *PathFlag) GetValue() string {
 	return f.Value
 }
 
-func (f *PathFlag) getValueAsAny() (any, error) {
+func (f *PathFlag) GetValueAsAny() (any, error) {
 	return f.Value, nil
 }
 

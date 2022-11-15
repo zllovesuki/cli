@@ -1,10 +1,5 @@
 package argh
 
-import (
-	"fmt"
-	"sort"
-)
-
 const (
 	OneOrMoreValue  NValue = -2
 	ZeroOrMoreValue NValue = -1
@@ -75,7 +70,8 @@ type CommandConfig struct {
 	ValueNames []string
 	Flags      *Flags
 	Commands   *Commands
-	Node       *CommandFlag
+
+	callbacks []func(*CommandFlag) error
 }
 
 func NewCommandConfig() *CommandConfig {
@@ -83,6 +79,22 @@ func NewCommandConfig() *CommandConfig {
 	cCfg.init()
 
 	return cCfg
+}
+
+func (cCfg *CommandConfig) On(f func(*CommandFlag) error) {
+	cCfg.init()
+
+	cCfg.callbacks = append(cCfg.callbacks, f)
+}
+
+func (cCfg *CommandConfig) applyCallbacks(cf *CommandFlag) error {
+	for _, callback := range cCfg.callbacks {
+		if err := callback(cf); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (cCfg *CommandConfig) Child() *CommandConfig {
@@ -103,80 +115,96 @@ func (cCfg *CommandConfig) init() {
 	if cCfg.Commands == nil {
 		cCfg.Commands = &Commands{}
 	}
+
+	if cCfg.callbacks == nil {
+		cCfg.callbacks = []func(*CommandFlag) error{}
+	}
 }
 
 // GetParsedCommand returns the CommandConfig for the command that was
 // parsed or nil if none
 func (cCfg *CommandConfig) GetParsedCommand() (string, *CommandConfig) {
-	tracef(2, "%[1]p CommandConfig.GetParsedCommand()", cCfg)
-	if cCfg.Node == nil {
-		tracef(2, "%[1]p CommandConfig.GetParsedCommand() -> \"\", nil", cCfg)
-		return "", nil
-	}
+	return "", nil
+	/*
+		tracef(2, "%[1]p CommandConfig.GetParsedCommand()", cCfg)
+		if cCfg.Node == nil {
+			tracef(2, "%[1]p CommandConfig.GetParsedCommand() -> \"\", nil", cCfg)
+			return "", nil
+		}
 
-	name, subCfg := cCfg.Commands.GetParsed()
-	tracef(2, "%[1]p CommandConfig.GetParsedCommand() -> %[2]q, %[3]p", cCfg, name, subCfg)
-	return name, subCfg
+		name, subCfg := cCfg.Commands.GetParsed()
+		tracef(2, "%[1]p CommandConfig.GetParsedCommand() -> %[2]q, %[3]p", cCfg, name, subCfg)
+		return name, subCfg
+	*/
 }
 
 // NFlag works like flag.FlagSet.NFlag
 func (cCfg *CommandConfig) NFlag() int {
-	n := 0
+	return 0
+	/*
+		n := 0
 
-	for _, flCfg := range cCfg.Flags.Map {
-		if flCfg.Node != nil {
-			n++
+		for _, flCfg := range cCfg.Flags.Map {
+			if flCfg.Node != nil {
+				n++
+			}
 		}
-	}
 
-	return n
+		return n
+	*/
 }
 
 // Visit works like flag.FlagSet.Visit
 func (cCfg *CommandConfig) Visit(f func(*CommandFlag)) {
-	names := make([]string, len(cCfg.Flags.Map))
+	_ = f
+	/*
+		names := make([]string, len(cCfg.Flags.Map))
 
-	i := 0
-	for name := range cCfg.Flags.Map {
-		names[i] = name
-		i++
-	}
-
-	sort.Strings(names)
-
-	for _, name := range names {
-		if flCfg, ok := cCfg.Flags.GetShallow(name); ok && flCfg.Node != nil {
-			f(flCfg.Node)
+		i := 0
+		for name := range cCfg.Flags.Map {
+			names[i] = name
+			i++
 		}
-	}
+
+		sort.Strings(names)
+
+		for _, name := range names {
+			if flCfg, ok := cCfg.Flags.GetShallow(name); ok && flCfg.Node != nil {
+				f(flCfg.Node)
+			}
+		}
+	*/
 }
 
 // Args is like flag.FlagSet.Args
 func (cCfg *CommandConfig) Args() []string {
-	tracef(2, "%[1]p CommandConfig.Args()", cCfg)
-	ret := []string{}
+	return []string{}
+	/*
+		tracef(2, "%[1]p CommandConfig.Args()", cCfg)
+		ret := []string{}
 
-	if cCfg.Node == nil {
-		tracef(2, "%[1]p CommandConfig.Args() -> %+[2]v", cCfg, ret)
-		return ret
-	}
-
-	for _, node := range cCfg.Node.Nodes {
-		if idn, ok := node.(*Ident); ok {
-			ret = append(ret, idn.Literal)
+		if cCfg.Node == nil {
+			tracef(2, "%[1]p CommandConfig.Args() -> %+[2]v", cCfg, ret)
+			return ret
 		}
 
-		if p, ok := node.(*PassthroughArgs); ok {
-			for _, ptNode := range p.Nodes {
-				if idn, ok := ptNode.(*Ident); ok {
-					ret = append(ret, idn.Literal)
+		for _, node := range cCfg.Node.Nodes {
+			if idn, ok := node.(*Ident); ok {
+				ret = append(ret, idn.Literal)
+			}
+
+			if p, ok := node.(*PassthroughArgs); ok {
+				for _, ptNode := range p.Nodes {
+					if idn, ok := ptNode.(*Ident); ok {
+						ret = append(ret, idn.Literal)
+					}
 				}
 			}
 		}
-	}
 
-	tracef(2, "%[1]p CommandConfig.Args() -> %+[2]v", cCfg, ret)
-	return ret
+		tracef(2, "%[1]p CommandConfig.Args() -> %+[2]v", cCfg, ret)
+		return ret
+	*/
 }
 
 // Lookup is like flag.FlagSet.Lookup
@@ -190,17 +218,20 @@ func (cCfg *CommandConfig) Lookup(name string) *FlagConfig {
 
 // Set is like flag.FlagSet.Set
 func (cCfg *CommandConfig) Set(name, value string) error {
-	cCfg.SetFlagConfig(
-		name,
-		&FlagConfig{
-			Node: &CommandFlag{
-				Name:   name,
-				Values: map[string]string{name: value},
-			},
-		},
-	)
-
 	return nil
+	/*
+		cCfg.SetFlagConfig(
+			name,
+			&FlagConfig{
+				Node: &CommandFlag{
+					Name:   name,
+					Values: map[string]string{name: value},
+				},
+			},
+		)
+
+		return nil
+	*/
 }
 
 func (cCfg *CommandConfig) GetCommandConfig(name string) (*CommandConfig, bool) {
@@ -239,31 +270,57 @@ type FlagConfig struct {
 	NValue     NValue
 	Persist    bool
 	ValueNames []string
-	Node       *CommandFlag
+
+	callbacks []func(*CommandFlag) error
 }
 
-func (flCfg *FlagConfig) Set(value string) error {
-	if flCfg.Node == nil {
-		if len(flCfg.ValueNames) == 0 {
-			return fmt.Errorf("cannot set value of flag without name: %w", Error)
-		}
-
-		flCfg.Node = &CommandFlag{
-			Name: flCfg.ValueNames[0],
-		}
+func (flCfg *FlagConfig) On(f func(*CommandFlag) error) {
+	if flCfg.callbacks == nil {
+		flCfg.callbacks = []func(*CommandFlag) error{}
 	}
 
-	flCfg.Node.Values[flCfg.Node.Name] = value
+	flCfg.callbacks = append(flCfg.callbacks, f)
+}
+
+func (flCfg *FlagConfig) applyCallbacks(cf *CommandFlag) error {
+	for _, callback := range flCfg.callbacks {
+		if err := callback(cf); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-func (flCfg *FlagConfig) Name() string {
-	if flCfg.Node == nil {
-		return ""
-	}
+func (flCfg *FlagConfig) Set(value string) error {
+	return nil
 
-	return flCfg.Node.Name
+	/*
+		if flCfg.Node == nil {
+			if len(flCfg.ValueNames) == 0 {
+				return fmt.Errorf("cannot set value of flag without name: %w", Error)
+			}
+
+			flCfg.Node = &CommandFlag{
+				Name: flCfg.ValueNames[0],
+			}
+		}
+
+		flCfg.Node.Values[flCfg.Node.Name] = value
+
+		return nil
+	*/
+}
+
+func (flCfg *FlagConfig) Name() string {
+	return ""
+	/*
+		if flCfg.Node == nil {
+			return ""
+		}
+
+		return flCfg.Node.Name
+	*/
 }
 
 // Value is like flag.Value.String (see alias)
@@ -286,19 +343,23 @@ func (flCfg *FlagConfig) LookupValue() (string, bool) {
 func (flCfg *FlagConfig) String() string { return flCfg.Value() }
 
 func (flCfg *FlagConfig) Values() []string {
-	if flCfg.Node == nil {
-		return []string{}
-	}
+	return []string{}
 
-	values := make([]string, len(flCfg.Node.Values))
+	/*
+		if flCfg.Node == nil {
+			return []string{}
+		}
 
-	i := 0
-	for _, value := range flCfg.Node.Values {
-		values[i] = value
-		i++
-	}
+		values := make([]string, len(flCfg.Node.Values))
 
-	return values
+		i := 0
+		for _, value := range flCfg.Node.Values {
+			values[i] = value
+			i++
+		}
+
+		return values
+	*/
 }
 
 type Flags struct {
@@ -367,19 +428,23 @@ type Commands struct {
 }
 
 func (cmd *Commands) GetParsed() (string, *CommandConfig) {
-	for name, loopCcfg := range cmd.Map {
-		cCfg := loopCcfg
-
-		tracef(2, "%[1]p Commands.GetParsed() check (%[2]q, %[3]p)", cmd, name, cCfg)
-
-		if cCfg.Node != nil {
-			tracef(2, "%[1]p Commands.GetParsed() -> (%[2]q, %[3]p)", cmd, name, cCfg)
-			return name, cCfg
-		}
-	}
-
-	tracef(2, "%[1]p Commands.GetParsed() -> (\"\", nil)", cmd)
 	return "", nil
+
+	/*
+		for name, loopCcfg := range cmd.Map {
+			cCfg := loopCcfg
+
+			tracef(2, "%[1]p Commands.GetParsed() check (%[2]q, %[3]p)", cmd, name, cCfg)
+
+			if cCfg.Node != nil {
+				tracef(2, "%[1]p Commands.GetParsed() -> (%[2]q, %[3]p)", cmd, name, cCfg)
+				return name, cCfg
+			}
+		}
+
+		tracef(2, "%[1]p Commands.GetParsed() -> (\"\", nil)", cmd)
+		return "", nil
+	*/
 }
 
 func (cmd *Commands) Get(name string) (*CommandConfig, bool) {

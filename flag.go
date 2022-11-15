@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/urfave/cli/v3/internal/argh"
 )
 
 const defaultPlaceholder = "value"
@@ -117,8 +119,12 @@ type RequiredFlag interface {
 	IsRequired() bool
 }
 
-type getValueAsAnyFlag interface {
-	getValueAsAny() (any, error)
+type GetValueAsAnyFlag interface {
+	GetValueAsAny() (any, error)
+}
+
+type ConfigurableFlag interface {
+	Configure(*argh.CommandConfig) error
 }
 
 // DocGenerationFlag is an interface that allows documentation generation for the flag

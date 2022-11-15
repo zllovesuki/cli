@@ -189,8 +189,10 @@ func (p *parser) parseCommand(cCfg *CommandConfig) Node {
 		node.Values = values
 	}
 
-	tracef(2, "parseCommand(%[1]p) setting Node=%[2]p", cCfg, node)
-	cCfg.Node = node
+	tracef(2, "parseCommand(%[1]p) applying callbacks for node=%[2]p", cCfg, node)
+	if err := cCfg.applyCallbacks(node); err != nil {
+		p.addError(err.Error())
+	}
 
 	tracef(2, "parseCommand(%[1]p) returning node=%[2]p", cCfg, node)
 	return node
@@ -309,7 +311,9 @@ func (p *parser) parseConfiguredFlag(node *CommandFlag, flCfg *FlagConfig, nValu
 			node.Values = values
 		}
 
-		flCfg.Node = node
+		if err := flCfg.applyCallbacks(node); err != nil {
+			p.addError(err.Error())
+		}
 
 		return node
 	}
